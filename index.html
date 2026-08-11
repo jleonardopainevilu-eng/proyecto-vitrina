@@ -11,6 +11,22 @@
 <body data-theme="clean" data-font="rounded">
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
 
+  <section id="authScreen" class="auth-screen" hidden aria-label="Iniciar sesión">
+    <form class="auth-card" id="authForm">
+      <h1>Proyecto Vitrina</h1>
+      <p id="authMessage">Ingresa tu correo y contraseña para crear o abrir tu vitrina.</p>
+      <label for="authEmail">Correo</label>
+      <input type="email" id="authEmail" required autocomplete="email">
+      <label for="authPassword">Contraseña</label>
+      <input type="password" id="authPassword" required minlength="6" autocomplete="current-password">
+      <div class="auth-actions">
+        <button type="submit" class="button button-dark" id="authSignInButton">Iniciar sesión</button>
+        <button type="button" class="button button-ghost" id="authSignUpButton">Crear cuenta</button>
+      </div>
+      <p class="auth-error" id="authError" hidden></p>
+    </form>
+  </section>
+
   <header class="topbar">
     <button class="brand" id="brandButton" type="button" aria-label="Ir a la vitrina pública">
       <span class="brand-mark" aria-hidden="true">✦</span>
@@ -24,6 +40,7 @@
         <span id="storageText">Preparando almacenamiento…</span>
       </span>
       <button class="button button-ghost" id="shareButton" type="button">Compartir</button>
+      <button class="button button-ghost" id="signOutButton" type="button" hidden>Cerrar sesión</button>
       <button class="button button-dark" id="toggleEditorButton" type="button">Editar mi vitrina</button>
     </nav>
   </header>
@@ -520,6 +537,8 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
   <script src="app.js" defer></script>
 </body>
 </html>
