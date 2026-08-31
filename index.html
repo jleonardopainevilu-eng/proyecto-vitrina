@@ -1,0 +1,585 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Prototipo completo de una vitrina personal compartible desde Instagram para vender cosas usadas.">
+  <meta name="theme-color" content="#f4f1eb">
+  <title>My Room — prototipo completo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-theme="clean" data-font="rounded">
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+  <section id="authScreen" class="auth-screen" hidden aria-label="Iniciar sesión">
+    <form class="auth-card" id="authForm">
+      <h1>My Room</h1>
+
+      <div class="auth-mode-toggle" id="authModeToggle" role="tablist" aria-label="Elegir modo">
+        <button type="button" class="auth-mode-option is-active" id="authModeSignIn" role="tab" aria-selected="true">Iniciar sesión</button>
+        <button type="button" class="auth-mode-option" id="authModeSignUp" role="tab" aria-selected="false">Crear cuenta</button>
+      </div>
+
+      <p id="authMessage">Ingresa tu correo y contraseña para abrir tu vitrina.</p>
+
+      <div id="authFieldsGroup">
+        <label for="authEmail">Correo</label>
+        <input type="email" id="authEmail" required autocomplete="email">
+
+        <label for="authPassword">Contraseña</label>
+        <div class="password-field">
+          <input type="password" id="authPassword" required minlength="6" autocomplete="current-password">
+          <button type="button" class="password-toggle" id="authPasswordToggle" aria-label="Mostrar contraseña" aria-pressed="false">Mostrar</button>
+        </div>
+
+        <button type="button" class="text-button auth-forgot-link" id="authForgotPasswordButton">¿Olvidaste tu contraseña?</button>
+
+        <label class="auth-checkbox-label" for="authAgeCheckbox" id="authAgeRow">
+          <input type="checkbox" id="authAgeCheckbox">
+          Declaro que soy mayor de 18 años.
+        </label>
+
+        <label class="auth-checkbox-label" for="authTermsCheckbox" id="authTermsRow">
+          <input type="checkbox" id="authTermsCheckbox">
+          He leído y acepto los <a href="terminos.html" target="_blank" rel="noopener noreferrer">Términos y Condiciones</a>.
+        </label>
+
+        <div class="auth-actions">
+          <button type="submit" class="button button-dark" id="authSubmitButton">Iniciar sesión</button>
+        </div>
+      </div>
+
+      <div id="authRecoveryGroup" hidden>
+        <label for="authNewPassword">Nueva contraseña</label>
+        <div class="password-field">
+          <input type="password" id="authNewPassword" minlength="6" autocomplete="new-password">
+          <button type="button" class="password-toggle" id="authNewPasswordToggle" aria-label="Mostrar contraseña" aria-pressed="false">Mostrar</button>
+        </div>
+        <div class="auth-actions">
+          <button type="button" class="button button-dark" id="authSetNewPasswordButton">Guardar nueva contraseña</button>
+        </div>
+      </div>
+
+      <p class="auth-error" id="authError" hidden></p>
+    </form>
+  </section>
+
+
+  <header class="topbar">
+    <button class="brand" id="brandButton" type="button" aria-label="Ir a la vitrina pública">
+      <span class="brand-mark" aria-hidden="true">✦</span>
+      <span>MY ROOM</span>
+      <small>PROTOTIPO</small>
+    </button>
+
+    <nav class="topbar-actions" aria-label="Acciones principales">
+      <span class="storage-pill" id="storagePill" title="Sistema de almacenamiento">
+        <span class="storage-dot" aria-hidden="true"></span>
+        <span id="storageText">Preparando almacenamiento…</span>
+      </span>
+      <button class="button button-ghost" id="shareButton" type="button">Compartir</button>
+      <button class="button button-ghost" id="signOutButton" type="button" hidden>Cerrar sesión</button>
+      <button class="button button-ghost" id="loginPromptButton" type="button" hidden>Iniciar sesión</button>
+      <button class="button button-dark" id="toggleEditorButton" type="button">Editar mi vitrina</button>
+    </nav>
+  </header>
+
+  <main id="contenido">
+    <section id="storefrontView" aria-label="Vitrina pública">
+      <section class="profile-hero" id="profileHero">
+        <div class="hero-overlay" aria-hidden="true"></div>
+        <div class="sticker-layer" id="stickerLayer" aria-hidden="true"></div>
+
+        <div class="profile-card">
+          <div class="avatar-shell">
+            <img id="publicAvatar" class="avatar" alt="Foto de perfil de la persona vendedora">
+            <span class="status-dot" title="Vitrina activa"></span>
+          </div>
+
+          <div class="profile-copy">
+            <div class="profile-kicker">
+              <span class="eyebrow" id="publicHandle">@cami</span>
+              <span class="trust-badge" id="publicBadge">Perfil activo</span>
+            </div>
+            <h1 id="publicStoreName">La pieza de Cami</h1>
+            <p class="profile-bio" id="publicBio">Ropa, libros y objetos con ganas de encontrar una nueva casa.</p>
+            <div class="profile-meta">
+              <span id="publicCity">📍 Puerto Montt</span>
+              <span id="publicMemberSince">🕘 Desde 2026</span>
+              <span id="publicSalesCount">✓ 12 ventas marcadas</span>
+            </div>
+          </div>
+
+          <div class="profile-actions">
+            <a class="button button-light" id="instagramLink" href="#" target="_blank" rel="noopener noreferrer">Instagram</a>
+            <a class="button button-accent" id="whatsappLink" href="#" target="_blank" rel="noopener noreferrer">Consultar</a>
+            <button class="icon-button" id="shareProfileIconButton" type="button" aria-label="Compartir vitrina">↗</button>
+          </div>
+        </div>
+
+        <div class="hero-message" id="heroMessage">
+          <span class="tape" aria-hidden="true"></span>
+          <p id="publicWelcomeTitle">Bienvenido a mi rincón.</p>
+          <strong id="publicWelcomeText">Mira tranquilo, pregunta sin compromiso.</strong>
+        </div>
+      </section>
+
+      <section class="products-section page-shell" aria-labelledby="productsTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Mi mesón digital</p>
+            <h2 id="productsTitle">Cosas que estoy vendiendo</h2>
+          </div>
+          <div class="filters" role="group" aria-label="Filtrar productos">
+            <button class="chip is-active" type="button" data-filter="all">Todo</button>
+            <button class="chip" type="button" data-filter="available">Disponible</button>
+            <button class="chip" type="button" data-filter="reserved">Reservado</button>
+            <button class="chip" type="button" data-filter="sold">Vendido</button>
+          </div>
+        </div>
+
+        <div class="product-grid" id="productGrid" data-grid-style="classic" aria-live="polite"></div>
+        <div class="empty-state" id="emptyProducts" hidden>
+          <span aria-hidden="true">📦</span>
+          <h3>Todavía no hay productos aquí</h3>
+          <p>Cuando la persona publique algo, aparecerá en este espacio.</p>
+        </div>
+      </section>
+
+      <section class="viral-cta page-shell">
+        <div>
+          <p class="eyebrow">Tu turno</p>
+          <h2>¿También quieres tu propio espacio?</h2>
+          <p>Crea una vitrina, decórala, sube lo que ya no usas y comparte un solo enlace en tu Instagram.</p>
+        </div>
+        <button class="button button-accent button-large" id="createMineButton" type="button">Crear mi vitrina gratis</button>
+      </section>
+
+      <section class="safety-note page-shell" aria-label="Consejos de seguridad">
+        <div class="safety-icon" aria-hidden="true">◎</div>
+        <div>
+          <strong>Compra y vende con cuidado.</strong>
+          <p>La plataforma facilita el contacto, pero no participa en pagos ni entregas. Revisa el producto, evita anticipos y acuerda encuentros en lugares públicos.</p>
+        </div>
+      </section>
+    </section>
+
+    <section class="editor-view" id="editorView" hidden aria-label="Editor de la vitrina">
+      <div class="page-shell editor-heading">
+        <div>
+          <p class="eyebrow">Panel privado</p>
+          <h1>Construye tu vitrina</h1>
+          <p>Personaliza el espacio, organiza tus productos y revisa el resultado antes de compartirlo.</p>
+        </div>
+        <div class="editor-heading-actions">
+          <button class="button button-ghost" id="copyProfileUrlButton" type="button">Copiar enlace</button>
+          <button class="button button-dark" id="previewButton" type="button">Ver vitrina pública</button>
+        </div>
+      </div>
+
+      <section class="page-shell dashboard-grid" aria-label="Resumen">
+        <article class="stat-card">
+          <span>Productos activos</span>
+          <strong id="activeProductsStat">0</strong>
+          <small id="productLimitText">de 5 en plan Gratis</small>
+        </article>
+        <article class="stat-card">
+          <span>Productos vendidos</span>
+          <strong id="soldProductsStat">0</strong>
+          <small>Marcados por el vendedor</small>
+        </article>
+        <article class="stat-card">
+          <span>Visitas de prueba</span>
+          <strong id="visitsStat">0</strong>
+          <small>Datos demostrativos</small>
+        </article>
+        <article class="stat-card">
+          <span>Clics de contacto</span>
+          <strong id="contactClicksStat">0</strong>
+          <small>WhatsApp e Instagram</small>
+        </article>
+      </section>
+
+      <section class="page-shell editor-workspace">
+        <nav class="editor-tabs" aria-label="Secciones del editor">
+          <button class="editor-tab is-active" type="button" data-editor-tab="profile">Perfil</button>
+          <button class="editor-tab" type="button" data-editor-tab="appearance">Apariencia</button>
+          <button class="editor-tab" type="button" data-editor-tab="products">Productos</button>
+          <button class="editor-tab" type="button" data-editor-tab="plan">Plan</button>
+        </nav>
+
+        <div class="editor-panel-wrap">
+          <section class="editor-panel is-active" data-editor-panel="profile">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Identidad</p>
+                <h2>Datos de tu espacio</h2>
+                <p>Esta información aparece en la parte superior de la vitrina.</p>
+              </div>
+            </div>
+
+            <form id="profileForm" class="form-grid">
+              <label>
+                Nombre de usuario
+                <span class="input-prefix"><span>/</span><input id="handleInput" name="handle" maxlength="20" pattern="[a-zA-Z0-9._\-]+" required></span>
+              </label>
+              <label>
+                Nombre de la vitrina
+                <input id="storeNameInput" name="storeName" maxlength="42" required>
+              </label>
+              <label>
+                Ciudad o comuna
+                <input id="cityInput" name="city" maxlength="40" required>
+              </label>
+              <label>
+                WhatsApp
+                <input id="whatsappInput" name="whatsapp" inputmode="tel" maxlength="18" placeholder="56912345678">
+                <small>Este número queda visible para cualquiera que vea tu vitrina. Si prefieres no mostrarlo, déjalo vacío y que te contacten por Instagram.</small>
+              </label>
+              <label>
+                Usuario de Instagram
+                <input id="instagramInput" name="instagram" maxlength="30" placeholder="@usuario">
+              </label>
+              <label>
+                Insignia visible
+                <select id="badgeInput" name="badge">
+                  <option value="active">Perfil activo</option>
+                  <option value="new">Vendedor nuevo</option>
+                  <option value="verified">Perfil verificado</option>
+                  <option value="plus">Vendedor Plus</option>
+                </select>
+              </label>
+              <label class="field-full">
+                Descripción
+                <textarea id="bioInput" name="bio" rows="3" maxlength="150"></textarea>
+                <small><span id="bioCounter">0</span>/150 caracteres</small>
+              </label>
+              <label>
+                Título de bienvenida
+                <input id="welcomeTitleInput" maxlength="42">
+              </label>
+              <label>
+                Mensaje breve
+                <input id="welcomeTextInput" maxlength="70">
+              </label>
+              <label class="file-field">
+                Foto de perfil
+                <input id="avatarInput" name="avatar" type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif">
+                <small>Se reduce y comprime antes de guardarse.</small>
+              </label>
+              <label class="file-field">
+                Imagen de portada
+                <input id="coverInput" name="cover" type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif">
+                <small>Disponible para probar el diseño completo.</small>
+              </label>
+              <div class="field-full media-preview-row">
+                <div class="media-preview-card">
+                  <span>Foto de perfil</span>
+                  <img id="avatarPreview" alt="Vista previa de la foto de perfil">
+                  <button class="text-button danger-text" id="removeAvatarButton" type="button">Restablecer</button>
+                </div>
+                <div class="media-preview-card media-preview-cover">
+                  <span>Portada</span>
+                  <div id="coverPreview" class="cover-preview"></div>
+                  <button class="text-button danger-text" id="removeCoverButton" type="button">Quitar portada</button>
+                </div>
+              </div>
+              <div class="field-full form-actions">
+                <button class="button button-dark" type="submit">Guardar perfil</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="editor-panel" data-editor-panel="appearance" hidden>
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Personalización</p>
+                <h2>Haz que se sienta tuyo</h2>
+                <p>El estilo cambia, pero el precio, el estado y los botones de contacto siempre permanecen claros.</p>
+              </div>
+            </div>
+
+            <div class="appearance-grid">
+              <section class="setting-card">
+                <div class="setting-heading">
+                  <h3>Tema visual</h3>
+                  <span>Base general</span>
+                </div>
+                <div class="theme-picker" id="themePicker">
+                  <button class="theme-option" type="button" data-theme-option="clean">
+                    <span class="theme-preview theme-clean"><i></i><i></i><i></i></span>
+                    <strong>Limpio</strong>
+                    <small>Claro y fácil de revisar.</small>
+                  </button>
+                  <button class="theme-option" type="button" data-theme-option="retro">
+                    <span class="theme-preview theme-retro"><i></i><i></i><i></i></span>
+                    <strong>Retro</strong>
+                    <small>Fotolog, stickers y textura.</small>
+                  </button>
+                  <button class="theme-option" type="button" data-theme-option="colorful">
+                    <span class="theme-preview theme-colorful"><i></i><i></i><i></i></span>
+                    <strong>Colorido</strong>
+                    <small>Más energía y contraste.</small>
+                  </button>
+                </div>
+              </section>
+
+              <section class="setting-card">
+                <div class="setting-heading">
+                  <h3>Cuadrícula de productos</h3>
+                  <span>Se puede cambiar en cualquier momento</span>
+                </div>
+                <div class="grid-style-picker" id="gridStylePicker">
+                  <button class="grid-style-option" type="button" data-grid-option="classic">
+                    <span class="grid-mini grid-mini-classic"><i></i><i></i><i></i><i></i></span>
+                    <strong>Clásica</strong>
+                    <small>Recta, limpia y similar a Instagram.</small>
+                  </button>
+                  <button class="grid-style-option" type="button" data-grid-option="polaroid">
+                    <span class="grid-mini grid-mini-polaroid"><i></i><i></i><i></i><i></i></span>
+                    <strong>Polaroid</strong>
+                    <small>Marcos retro con leve inclinación.</small>
+                  </button>
+                </div>
+              </section>
+
+              <section class="setting-card">
+                <div class="setting-heading">
+                  <h3>Fondo</h3>
+                  <span>Color, patrón o portada</span>
+                </div>
+                <div class="background-picker" id="backgroundPicker">
+                  <button class="background-swatch bg-soft" type="button" data-background-option="soft" aria-label="Fondo suave"></button>
+                  <button class="background-swatch bg-grid" type="button" data-background-option="grid" aria-label="Fondo cuadriculado"></button>
+                  <button class="background-swatch bg-stars" type="button" data-background-option="stars" aria-label="Fondo de estrellas"></button>
+                  <button class="background-swatch bg-sunset" type="button" data-background-option="sunset" aria-label="Fondo degradado"></button>
+                  <button class="background-swatch bg-night" type="button" data-background-option="night" aria-label="Fondo oscuro"></button>
+                </div>
+              </section>
+
+              <section class="setting-card">
+                <div class="setting-heading">
+                  <h3>Detalles</h3>
+                  <span>Colores, letra y stickers</span>
+                </div>
+                <div class="compact-form-grid">
+                  <label>
+                    Color principal
+                    <input id="accentColorInput" type="color" value="#6b5cff">
+                  </label>
+                  <label>
+                    Tipografía
+                    <select id="fontInput">
+                      <option value="rounded">Redondeada</option>
+                      <option value="classic">Clásica</option>
+                      <option value="mono">Monoespaciada</option>
+                    </select>
+                  </label>
+                  <label>
+                    Stickers
+                    <select id="stickerPackInput">
+                      <option value="none">Sin stickers</option>
+                      <option value="stars">Estrellas</option>
+                      <option value="hearts">Corazones</option>
+                      <option value="flowers">Flores</option>
+                      <option value="doodles">Doodles</option>
+                    </select>
+                  </label>
+                  <label>
+                    Título de productos
+                    <input id="productsTitleInput" maxlength="48">
+                  </label>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="editor-panel" data-editor-panel="products" hidden>
+            <div class="panel-heading panel-heading-inline">
+              <div>
+                <p class="eyebrow">Inventario</p>
+                <h2>Mis productos</h2>
+                <p>Agrega hasta cinco fotografías y cambia el estado cuando reserves o vendas algo.</p>
+              </div>
+              <button class="button button-accent" id="addProductButton" type="button">+ Agregar producto</button>
+            </div>
+            <div class="editor-product-list" id="editorProductList"></div>
+          </section>
+
+          <section class="editor-panel" data-editor-panel="plan" hidden>
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Modelo freemium</p>
+                <h2>Planes del prototipo</h2>
+                <p>En esta demostración puedes alternar entre planes para revisar límites y presentación.</p>
+              </div>
+            </div>
+
+            <div class="plan-grid">
+              <article class="plan-option" data-plan-card="free">
+                <span class="plan-label">GRATIS</span>
+                <h3>$0</h3>
+                <p>Para crear una vitrina y comenzar a compartirla.</p>
+                <ul>
+                  <li>Hasta 5 productos activos</li>
+                  <li>5 fotos por producto</li>
+                  <li>Temas base y cuadrículas</li>
+                  <li>Enlace personal y WhatsApp</li>
+                  <li>Marca de la plataforma visible</li>
+                </ul>
+                <button class="button button-ghost plan-select-button" type="button" data-plan-option="free">Usar plan Gratis</button>
+              </article>
+
+              <article class="plan-option plan-option-featured" data-plan-card="plus">
+                <span class="plan-label">PLUS</span>
+                <h3>$3.990 <small>CLP/mes</small></h3>
+                <p>Para vendedores frecuentes y vitrinas más personalizadas.</p>
+                <ul>
+                  <li>Hasta 50 productos activos</li>
+                  <li>Portada y colores avanzados</li>
+                  <li>Packs visuales exclusivos</li>
+                  <li>Estadísticas completas</li>
+                  <li>Insignia Plus y sin marca</li>
+                </ul>
+                <button class="button button-accent plan-select-button" type="button" data-plan-option="plus">Simular plan Plus</button>
+              </article>
+            </div>
+
+            <section class="plan-usage-card">
+              <div>
+                <span class="eyebrow">Uso actual</span>
+                <h3><span id="planProductCount">0</span> de <span id="planProductLimit">5</span> productos activos</h3>
+              </div>
+              <div class="progress-track" aria-hidden="true"><span id="planProgress"></span></div>
+              <p id="planDescription">Estás probando el plan Gratis.</p>
+            </section>
+          </section>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="site-footer" id="siteFooter">
+    <span id="platformBranding">Creado con My Room · prototipo funcional</span>
+    <a class="text-button" href="terminos.html">Términos y condiciones</a>
+    <button class="text-button" id="resetDemoButton" type="button">Restablecer demostración</button>
+  </footer>
+
+  <dialog class="modal" id="productDialog">
+    <div class="modal-shell product-detail-shell">
+      <button class="modal-close" id="closeProductDialogButton" type="button" aria-label="Cerrar" autofocus>×</button>
+      <div id="productDialogContent"></div>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="productFormDialog">
+    <form class="modal-shell product-form-shell" id="productForm">
+      <button class="modal-close" type="button" id="closeProductFormButton" aria-label="Cerrar">×</button>
+      <input id="productIdInput" type="hidden">
+      <div class="panel-heading compact-panel-heading">
+        <div>
+          <p class="eyebrow">Producto</p>
+          <h2 id="productFormTitle">Agregar producto</h2>
+        </div>
+      </div>
+
+      <div class="form-grid">
+        <label class="field-full file-field">
+          Fotografías (máximo 5)
+          <input id="productImagesInput" type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif" multiple>
+          <small>Se comprimen antes de guardarse en IndexedDB.</small>
+        </label>
+        <div class="field-full image-preview-list" id="imagePreviewList"></div>
+        <label>
+          Nombre
+          <input id="productNameInput" maxlength="60" required>
+        </label>
+        <label>
+          Precio
+          <input id="productPriceInput" type="number" min="0" max="999999999" step="1" required>
+        </label>
+        <label>
+          Categoría
+          <select id="productCategoryInput" required>
+            <option value="home">Hogar y muebles</option>
+            <option value="technology">Tecnología</option>
+            <option value="clothing">Ropa y accesorios</option>
+            <option value="books">Libros y pasatiempos</option>
+            <option value="sports">Deportes</option>
+            <option value="other">Otros</option>
+          </select>
+        </label>
+        <label>
+          Condición
+          <select id="productConditionInput" required>
+            <option value="new">Nuevo</option>
+            <option value="like-new">Casi nuevo</option>
+            <option value="used" selected>Usado</option>
+            <option value="repair">Para reparar</option>
+          </select>
+        </label>
+        <label>
+          Estado
+          <select id="productStatusInput" required>
+            <option value="available">Disponible</option>
+            <option value="reserved">Reservado</option>
+            <option value="sold">Vendido</option>
+          </select>
+        </label>
+        <label>
+          Sector o comuna
+          <input id="productLocationInput" maxlength="60" placeholder="Ej.: Centro, Puerto Montt">
+        </label>
+        <label class="field-full">
+          Entrega
+          <input id="productDeliveryInput" maxlength="120" placeholder="Ej.: Entrega en lugar público o retiro coordinado">
+        </label>
+        <label class="field-full">
+          Descripción
+          <textarea id="productDescriptionInput" rows="4" maxlength="400" required></textarea>
+        </label>
+        <div class="field-full form-actions split-actions">
+          <button class="button button-ghost danger-button" id="deleteProductButton" type="button" hidden>Eliminar</button>
+          <button class="button button-dark" type="submit">Guardar producto</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="onboardingDialog">
+    <form class="modal-shell onboarding-shell" id="onboardingForm">
+      <button class="modal-close" type="button" id="closeOnboardingButton" aria-label="Cerrar">×</button>
+      <div class="onboarding-icon" aria-hidden="true">✦</div>
+      <p class="eyebrow">Crea tu vitrina</p>
+      <h2>Tu espacio puede estar listo en minutos</h2>
+      <p>Elige un nombre, publica tu primer producto y comparte el enlace desde Instagram.</p>
+      <div class="form-grid onboarding-form-grid">
+        <label>
+          Tu nombre
+          <input id="onboardingNameInput" maxlength="42" required placeholder="Camila">
+        </label>
+        <label>
+          Nombre de usuario
+          <span class="input-prefix"><span>/</span><input id="onboardingHandleInput" maxlength="20" pattern="[a-zA-Z0-9._\-]+" required placeholder="cami"></span>
+        </label>
+        <label>
+          Ciudad
+          <input id="onboardingCityInput" maxlength="40" required placeholder="Puerto Montt">
+        </label>
+        <label>
+          WhatsApp
+          <input id="onboardingWhatsappInput" inputmode="tel" maxlength="18" placeholder="56912345678">
+        </label>
+      </div>
+      <button class="button button-accent button-large" type="submit">Crear mi espacio</button>
+      <small>En el producto real, este paso crearía una cuenta segura.</small>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
