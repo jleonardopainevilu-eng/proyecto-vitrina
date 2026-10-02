@@ -252,7 +252,6 @@ function normalizeState(candidate) {
   if (!/^#[0-9a-f]{6}$/i.test(normalized.profile.accent || "")) normalized.profile.accent = defaults.profile.accent;
   if (!badgeLabels[normalized.profile.badge]) normalized.profile.badge = "active";
 
-  // Solo se aceptan imágenes alojadas en nuestro Storage (o los dibujos por defecto).
   if (!isTrustedMediaUrl(normalized.profile.avatar)) normalized.profile.avatar = createAvatarDataUrl();
   if (normalized.profile.cover && !isTrustedMediaUrl(normalized.profile.cover)) normalized.profile.cover = null;
   normalized.products.forEach((product) => {
@@ -268,7 +267,6 @@ function isTrustedMediaUrl(value) {
   return value.startsWith(`${SUPABASE_URL}/storage/v1/object/public/${MEDIA_BUCKET}/`);
 }
 
-// Vitrina vacía para cuentas nuevas (sin productos ni datos de ejemplo).
 function getBlankState(handle) {
   const demo = getDefaultState();
   return {
@@ -299,8 +297,8 @@ function generateId() {
 }
 
 let currentSession = null;
-let publicViewHandle = null; // si no es null, estamos viendo la vitrina pública de otro usuario (solo lectura)
-let authMode = "signin"; // "signin" | "signup" | "recovery"
+let publicViewHandle = null;
+let authMode = "signin";
 let isPasswordRecovery = false;
 
 function getPublicHandleFromUrl() {
@@ -368,13 +366,15 @@ function showAuthError(error) {
 }
 
 function setupPasswordToggle(toggleId, inputId) {
-  el(toggleId).addEventListener("click", () => {
+  const btn = el(toggleId);
+  if (!btn) return;
+  btn.addEventListener("click", () => {
     const input = el(inputId);
     const willShow = input.type === "password";
     input.type = willShow ? "text" : "password";
-    el(toggleId).textContent = willShow ? "Ocultar" : "Mostrar";
-    el(toggleId).setAttribute("aria-label", willShow ? "Ocultar contraseña" : "Mostrar contraseña");
-    el(toggleId).setAttribute("aria-pressed", String(willShow));
+    btn.textContent = willShow ? "Ocultar" : "Mostrar";
+    btn.setAttribute("aria-label", willShow ? "Ocultar contraseña" : "Mostrar contraseña");
+    btn.setAttribute("aria-pressed", String(willShow));
   });
 }
 
@@ -444,7 +444,6 @@ async function createVitrinaRow(userId, initialState, termsAcceptedAt = null, ag
 }
 
 async function initializeStorage() {
-  // Modo vitrina pública: alguien entró con ?u=handle, no necesita cuenta.
   publicViewHandle = getPublicHandleFromUrl();
   try {
     const { data: { session } } = await supabaseClient.auth.getSession();
@@ -466,13 +465,10 @@ async function initializeStorage() {
     } catch (error) {
       console.warn("No se pudo cargar la vitrina pública", error);
     }
-    // Si el handle no existe, seguimos al flujo normal de login.
     publicViewHandle = null;
   }
 
-  if (isPasswordRecovery) {
-    return; // se queda mostrando el formulario de nueva contraseña
-  }
+  if (isPasswordRecovery) return;
 
   if (!currentSession) {
     state = getDefaultState();
@@ -512,7 +508,7 @@ function updateStorageStatus(text, mode) {
 
 function persistState() {
   saveQueue = saveQueue.then(async () => {
-    if (storageMode === "supabase-public") return true; // solo lectura, no se guarda nada
+    if (storageMode === "supabase-public") return true;
     if (storageMode !== "supabase" || !currentSession) return false;
     try {
       const { error } = await supabaseClient
@@ -547,41 +543,15 @@ async function uploadMedia(blob, pathWithoutExtension) {
     .upload(path, blob, { upsert: true, contentType: blob.type || "image/webp" });
   if (error) throw error;
   const { data } = supabaseClient.storage.from(MEDIA_BUCKET).getPublicUrl(path);
-  return `${data.publicUrl}?v=${Date.now()}`; // cache-busting: mismo nombre, contenido nuevo
-}
-
-async function removeMediaFile(pathWithoutExtension) {
-  try {
-    await Promise.all(
-      ["webp", "jpg", "png"].map((ext) =>
-        supabaseClient.storage.from(MEDIA_BUCKET).remove([`${pathWithoutExtension}.${ext}`])
-      )
-    );
-  } catch (error) {
-    console.warn("No se pudo eliminar el archivo de Storage", error);
-  }
-}
-
-async function removeMediaFolder(prefix) {
-  try {
-    const { data: files, error } = await supabaseClient.storage.from(MEDIA_BUCKET).list(prefix);
-    if (error || !files?.length) return;
-    await supabaseClient.storage.from(MEDIA_BUCKET).remove(files.map((file) => `${prefix}/${file.name}`));
-  } catch (error) {
-    console.warn("No se pudo limpiar archivos de Storage", error);
-  }
-}
-
-function storagePathFromUrl(url) {
-  const marker = `/storage/v1/object/public/${MEDIA_BUCKET}/`;
-  const index = url.indexOf(marker);
-  if (index === -1) return null;
-  return decodeURIComponent(url.slice(index + marker.length).split("?")[0]);
+  return `${data.publicUrl}?v=${Date.now()}`;
 }
 
 async function removeMediaByUrl(url) {
-  const path = storagePathFromUrl(url);
-  if (!path || !currentSession || !path.startsWith(`${currentSession.user.id}/`)) return;
+  const marker = `/storage/v1/object/public/${MEDIA_BUCKET}/`;
+  const idx = url?.indexOf(marker);
+  if (idx === undefined || idx === -1 || !currentSession) return;
+  const path = decodeURIComponent(url.slice(idx + marker.length).split("?")[0]);
+  if (!path.startsWith(`${currentSession.user.id}/`)) return;
   try {
     await supabaseClient.storage.from(MEDIA_BUCKET).remove([path]);
   } catch (error) {
@@ -622,7 +592,7 @@ function formatPrice(value) {
 
 function normalizePhone(value) {
   let digits = String(value || "").replace(/\D/g, "").replace(/^00/, "");
-  if (digits.length === 9 && digits.startsWith("9")) digits = `56${digits}`; // celular chileno sin código de país
+  if (digits.length === 9 && digits.startsWith("9")) digits = `56${digits}`;
   return digits.slice(0, 15);
 }
 
@@ -651,7 +621,7 @@ function accentTextColor(hex) {
   const r = parseInt(value.slice(0, 2), 16) / 255;
   const g = parseInt(value.slice(2, 4), 16) / 255;
   const b = parseInt(value.slice(4, 6), 16) / 255;
-  const convert = (channel) => channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  const convert = (ch) => ch <= 0.03928 ? ch / 12.92 : ((ch + 0.055) / 1.055) ** 2.4;
   const luminance = 0.2126 * convert(r) + 0.7152 * convert(g) + 0.0722 * convert(b);
   return luminance > 0.54 ? "#171717" : "#ffffff";
 }
@@ -665,6 +635,16 @@ function renderAll() {
   renderEditorProducts();
   renderStats();
   renderAds();
+  updateTopBarButtons();
+}
+
+function updateTopBarButtons() {
+  const isOwner = storageMode === "supabase" && currentSession;
+  const isPublicView = storageMode === "supabase-public";
+  
+  el("signOutButton").hidden = !isOwner;
+  el("loginPromptButton").hidden = isOwner || !isPublicView;
+  el("toggleEditorButton").hidden = !isOwner;
 }
 
 function renderAppearance() {
@@ -750,7 +730,7 @@ function renderProducts() {
     article.className = "product-card";
     article.innerHTML = `
       <div class="product-image-wrap">
-        <img class="product-image" src="${escapeAttribute(mediaUrl(product.images[0]))}" alt="${escapeAttribute(product.name)}">
+        <img class="product-image" src="${escapeAttribute(mediaUrl(product.images[0]))}" alt="${escapeAttribute(product.name)}" loading="lazy">
         <span class="product-status ${escapeAttribute(product.status)}">${escapeHtml(statusLabels[product.status] || product.status)}</span>
       </div>
       <div class="product-copy">
@@ -810,7 +790,7 @@ function renderEditorProducts() {
     const row = document.createElement("article");
     row.className = "editor-product-row";
     row.innerHTML = `
-      <img src="${escapeAttribute(mediaUrl(product.images[0]))}" alt="">
+      <img src="${escapeAttribute(mediaUrl(product.images[0]))}" alt="" loading="lazy">
       <div>
         <h3>${escapeHtml(product.name)}</h3>
         <p>${formatPrice(product.price)} · ${escapeHtml(statusLabels[product.status])} · ${escapeHtml(categoryLabels[product.category])}</p>
@@ -829,325 +809,60 @@ function renderEditorProducts() {
 }
 
 async function moveProduct(index, direction) {
-  const target = index + direction;
-  if (target < 0 || target >= state.products.length) return;
-  [state.products[index], state.products[target]] = [state.products[target], state.products[index]];
-  await persistState();
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= state.products.length) return;
+  const temp = state.products[index];
+  state.products[index] = state.products[targetIndex];
+  state.products[targetIndex] = temp;
   renderProducts();
   renderEditorProducts();
+  await persistState();
 }
 
 function renderStats() {
   const activeCount = getActiveProductCount();
-  const soldCount = state.products.filter((product) => product.status === "sold").length;
   const limit = getPlanLimit();
+  const soldCount = state.products.filter((p) => p.status === "sold").length;
+
   el("activeProductsStat").textContent = activeCount;
-  el("soldProductsStat").textContent = soldCount;
   el("productLimitText").textContent = `de ${limit} productos activos`;
+  el("soldProductsStat").textContent = soldCount;
   el("planProductCount").textContent = activeCount;
   el("planProductLimit").textContent = limit;
-  el("planProgress").style.width = `${Math.min(100, (activeCount / limit) * 100)}%`;
+
+  const pct = Math.min(100, Math.round((activeCount / limit) * 100));
+  el("planProgress").style.width = `${pct}%`;
 }
 
-function switchEditorTab(tabName) {
-  document.querySelectorAll("[data-editor-tab]").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.editorTab === tabName);
-  });
-  document.querySelectorAll("[data-editor-panel]").forEach((panel) => {
-    const active = panel.dataset.editorPanel === tabName;
-    panel.hidden = !active;
-    panel.classList.toggle("is-active", active);
-  });
-}
-
-function showEditor(tabName = "profile") {
-  storefrontView.hidden = true;
-  editorView.hidden = false;
-  el("toggleEditorButton").hidden = true;
-  el("shareButton").hidden = true;
-  switchEditorTab(tabName);
-  renderAll();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function showStorefront() {
-  editorView.hidden = true;
-  storefrontView.hidden = false;
-  el("toggleEditorButton").hidden = Boolean(publicViewHandle);
-  el("shareButton").hidden = false;
-  renderAll();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-async function saveProfile(event) {
-  event.preventDefault();
-  const cleanHandle = el("handleInput").value.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "");
-  if (!cleanHandle) {
-    showToast("El nombre de usuario necesita letras o números.");
-    return;
-  }
-
-  if (cleanHandle !== state.profile.handle && currentSession) {
-    try {
-      const { data: taken } = await supabaseClient
-        .from("vitrinas")
-        .select("user_id")
-        .eq("handle", cleanHandle)
-        .neq("user_id", currentSession.user.id)
-        .limit(1);
-      if (taken?.length) {
-        showToast("Ese nombre de usuario ya está en uso. Elige otro.");
-        return;
-      }
-    } catch (error) {
-      console.warn("No se pudo comprobar el nombre de usuario", error);
-    }
-  }
-
-  const previousProfile = state.profile;
-  state.profile = {
-    ...state.profile,
-    handle: cleanHandle,
-    storeName: el("storeNameInput").value.trim(),
-    city: el("cityInput").value.trim(),
-    whatsapp: normalizePhone(el("whatsappInput").value),
-    instagram: normalizeInstagram(el("instagramInput").value),
-    badge: el("badgeInput").value,
-    bio: el("bioInput").value.trim(),
-    welcomeTitle: el("welcomeTitleInput").value.trim() || "Bienvenido a mi rincón.",
-    welcomeText: el("welcomeTextInput").value.trim() || "Mira tranquilo, pregunta sin compromiso."
-  };
-  const saved = await persistState();
-  if (saved === false) {
-    state.profile = previousProfile;
-    renderAll();
-    return;
-  }
-  renderAll();
-  showToast("Perfil guardado.");
-}
-
-async function handleMediaUpload(event, target, maxDimension, quality) {
-  const [file] = event.target.files;
-  if (!file) return;
-  if (file.size > MAX_SOURCE_IMAGE_BYTES) {
-    showToast("La imagen supera 15 MB. Elige una más liviana.");
-    event.target.value = "";
-    return;
-  }
-
-  try {
-    const compressed = await compressImage(file, maxDimension, quality);
-    const url = await uploadMedia(compressed, `${currentSession.user.id}/${target}`);
-    state.profile[target] = url;
-    await persistState();
-    renderAll();
-    showToast(target === "avatar" ? "Foto de perfil actualizada." : "Portada actualizada.");
-  } catch (error) {
-    console.error(error);
-    showToast("No fue posible subir esa imagen. En iPhone, prueba exportarla como JPG.");
-  } finally {
-    event.target.value = "";
-  }
-}
-
-async function removeAvatar() {
-  state.profile.avatar = createAvatarDataUrl();
-  await persistState();
-  await removeMediaFile(`${currentSession.user.id}/avatar`);
-  renderAll();
-  showToast("Foto de perfil restablecida.");
-}
-
-async function removeCover() {
-  state.profile.cover = null;
-  await persistState();
-  await removeMediaFile(`${currentSession.user.id}/cover`);
-  renderAll();
-  showToast("Portada eliminada.");
-}
-
-async function applyAppearanceChange(key, value) {
-  state.profile[key] = value;
-  await persistState();
-  renderAppearance();
-  renderProfile();
-  renderAppearanceControls();
-}
-
-function openProductForm(productId = null) {
-  const limit = getPlanLimit();
-  if (!productId && getActiveProductCount() >= limit) {
-    showToast(`Llegaste al límite de ${limit} productos activos. Marca uno como vendido o elimínalo para publicar otro.`);
-    switchEditorTab("plan");
-    return;
-  }
-
-  productForm.reset();
-  el("productIdInput").value = productId || "";
-  el("productFormTitle").textContent = productId ? "Editar producto" : "Agregar producto";
-  el("deleteProductButton").hidden = !productId;
-
-  if (productId) {
-    const product = state.products.find((item) => item.id === productId);
-    if (!product) return;
-    el("productNameInput").value = product.name;
-    el("productPriceInput").value = product.price;
-    el("productCategoryInput").value = product.category;
-    el("productConditionInput").value = product.condition;
-    el("productStatusInput").value = product.status;
-    el("productLocationInput").value = product.location;
-    el("productDeliveryInput").value = product.delivery;
-    el("productDescriptionInput").value = product.description;
-    editingImages = [...product.images];
-  } else {
-    el("productCategoryInput").value = "other";
-    el("productConditionInput").value = "used";
-    el("productStatusInput").value = "available";
-    el("productLocationInput").value = state.profile.city;
-    el("productDeliveryInput").value = "Entrega a coordinar con el vendedor.";
-    editingImages = [];
-  }
-
-  renderImagePreviews();
-  productFormDialog.showModal();
-}
-
-function closeProductForm() {
-  productFormDialog.close();
-  editingImages = [];
-  el("productImagesInput").value = "";
-}
-
-async function handleProductImagesUpload(event) {
-  const files = [...event.target.files];
-  const availableSlots = MAX_PRODUCT_IMAGES - editingImages.length;
-  if (availableSlots <= 0) {
-    showToast(`Puedes usar hasta ${MAX_PRODUCT_IMAGES} fotografías.`);
-    event.target.value = "";
-    return;
-  }
-
-  const chosenFiles = files.slice(0, availableSlots);
-  if (chosenFiles.some((file) => file.size > MAX_SOURCE_IMAGE_BYTES)) {
-    showToast("Una fotografía supera 15 MB y no fue agregada.");
-  }
-
-  try {
-    const validFiles = chosenFiles.filter((file) => file.size <= MAX_SOURCE_IMAGE_BYTES);
-    const compressed = [];
-    for (const file of validFiles) compressed.push(await compressImage(file, 1400, 0.78));
-    editingImages.push(...compressed);
-    renderImagePreviews();
-    if (files.length > availableSlots) showToast(`Se agregaron solo ${availableSlots} fotografías.`);
-  } catch (error) {
-    console.error(error);
-    showToast("No fue posible procesar una fotografía. Prueba con JPG o PNG.");
-  } finally {
-    event.target.value = "";
-  }
-}
-
-function renderImagePreviews() {
-  const container = el("imagePreviewList");
-  container.innerHTML = "";
-  editingImages.forEach((image, index) => {
-    const preview = document.createElement("div");
-    preview.className = "image-preview";
-    preview.innerHTML = `<img src="${escapeAttribute(mediaUrl(image))}" alt="Vista previa ${index + 1}"><button type="button" aria-label="Quitar imagen ${index + 1}">×</button>`;
-    preview.querySelector("button").addEventListener("click", () => {
-      editingImages.splice(index, 1);
-      renderImagePreviews();
-    });
-    container.appendChild(preview);
-  });
-}
-
-async function saveProduct(event) {
-  event.preventDefault();
-  const productId = el("productIdInput").value || generateId();
-  const existing = state.products.find((item) => item.id === productId);
-  const nextStatus = el("productStatusInput").value;
-  const limit = getPlanLimit();
-  if (nextStatus !== "sold" && getActiveProductCount(productId) >= limit) {
-    showToast(`Llegaste al límite de ${limit} productos activos. Marca uno como vendido o elimínalo para publicar otro.`);
-    return;
-  }
-
-  let uploadedImages;
-  try {
-    uploadedImages = await Promise.all(
-      editingImages.map((image) => (
-        image instanceof Blob
-          ? uploadMedia(image, `${currentSession.user.id}/products/${productId}/${generateId()}`)
-          : Promise.resolve(image)
-      ))
-    );
-  } catch (error) {
-    console.error(error);
-    showToast("No se pudieron subir una o más fotos. Intenta de nuevo.");
-    return;
-  }
-
-  const productData = {
-    id: productId,
-    name: el("productNameInput").value.trim(),
-    price: Number(el("productPriceInput").value),
-    category: el("productCategoryInput").value,
-    condition: el("productConditionInput").value,
-    status: nextStatus,
-    location: el("productLocationInput").value.trim() || state.profile.city,
-    delivery: el("productDeliveryInput").value.trim() || "Entrega a coordinar con el vendedor.",
-    description: el("productDescriptionInput").value.trim(),
-    images: uploadedImages.length ? uploadedImages : [createSvgDataUrl("SIN FOTO", "#d7d3ca", "#aaa39a", "□")],
-    createdAt: existing?.createdAt || new Date().toISOString()
-  };
-
-  if (existing) {
-    const index = state.products.findIndex((item) => item.id === productId);
-    state.products[index] = productData;
-  } else {
-    state.products.unshift(productData);
-  }
-
-  const saved = await persistState();
-  if (saved === false) return;
-  const removedUrls = (existing?.images || []).filter((url) => typeof url === "string" && !uploadedImages.includes(url));
-  removedUrls.forEach((url) => removeMediaByUrl(url));
-  closeProductForm();
-  renderAll();
-  showToast(existing ? "Producto actualizado." : "Producto publicado en tu vitrina.");
-}
-
-async function deleteProduct() {
-  const productId = el("productIdInput").value;
-  const product = state.products.find((item) => item.id === productId);
-  if (!product) return;
-  const accepted = window.confirm(`¿Eliminar “${product.name}”? Esta acción no se puede deshacer.`);
-  if (!accepted) return;
-  state.products = state.products.filter((item) => item.id !== productId);
-  await persistState();
-  await removeMediaFolder(`${currentSession.user.id}/products/${productId}`);
-  closeProductForm();
-  renderAll();
-  showToast("Producto eliminado.");
+function updateBioCounter() {
+  el("bioCounter").textContent = el("bioInput").value.length;
 }
 
 function openProductDetail(productId) {
-  const product = state.products.find((item) => item.id === productId);
+  const product = state.products.find((p) => p.id === productId);
   if (!product) return;
 
+  const container = el("productDialogContent");
   const phone = normalizePhone(state.profile.whatsapp);
-  const message = `Hola, vi “${product.name}” en tu vitrina. ¿Todavía está disponible?`;
-  const whatsappUrl = phone.length >= 8 ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}` : "#";
-  const images = product.images.length ? product.images : [createSvgDataUrl("SIN FOTO", "#d7d3ca", "#aaa39a", "□")];
-  const reportUrl = `mailto:myroom.vitrina@gmail.com?subject=${encodeURIComponent(`Reporte: ${product.name} (@${state.profile.handle})`)}&body=${encodeURIComponent(`Enlace: ${conceptualProductUrl(product.id)}\n\nMotivo del reporte:\n`)}`;
+  const whatsappUrl = phone.length >= 8
+    ? `https://wa.me/${phone}?text=${encodeURIComponent(`Hola, vi en tu vitrina "${state.profile.storeName}" el producto "${product.name}" (${formatPrice(product.price)}). ¿Sigue disponible?`)}`
+    : "#";
 
-  el("productDialogContent").innerHTML = `
+  container.innerHTML = `
     <div class="product-detail-layout">
-      <div>
-        <div class="product-gallery-main"><img id="detailMainImage" src="${escapeAttribute(mediaUrl(images[0]))}" alt="${escapeAttribute(product.name)}"></div>
-        <div class="product-thumbnails" id="detailThumbnails"></div>
+      <div class="product-gallery">
+        <div class="product-gallery-main">
+          <img id="detailMainImage" src="${escapeAttribute(mediaUrl(product.images[0]))}" alt="${escapeAttribute(product.name)}">
+        </div>
+        ${product.images.length > 1 ? `
+          <div class="product-thumbnails">
+            ${product.images.map((img, i) => `
+              <button class="product-thumbnail ${i === 0 ? "is-active" : ""}" type="button">
+                <img src="${escapeAttribute(mediaUrl(img))}" alt="">
+              </button>
+            `).join("")}
+          </div>
+        ` : ""}
       </div>
       <div class="product-detail-copy">
         <span class="product-status ${escapeAttribute(product.status)}">${escapeHtml(statusLabels[product.status])}</span>
@@ -1155,398 +870,353 @@ function openProductDetail(productId) {
         <p class="product-detail-price">${formatPrice(product.price)}</p>
         <p class="product-detail-description">${escapeHtml(product.description)}</p>
         <div class="product-detail-meta">
-          <span><strong>Condición:</strong> ${escapeHtml(conditionLabels[product.condition])}</span>
-          <span><strong>Categoría:</strong> ${escapeHtml(categoryLabels[product.category])}</span>
-          <span><strong>Ubicación:</strong> ${escapeHtml(product.location)}</span>
-          <span><strong>Entrega:</strong> ${escapeHtml(product.delivery)}</span>
+          <div><strong>Condición:</strong> ${escapeHtml(conditionLabels[product.condition])}</div>
+          <div><strong>Categoría:</strong> ${escapeHtml(categoryLabels[product.category])}</div>
+          <div><strong>Ubicación:</strong> ${escapeHtml(product.location || state.profile.city)}</div>
+          <div><strong>Entrega:</strong> ${escapeHtml(product.delivery)}</div>
         </div>
         <div class="product-detail-actions">
-          <a class="button button-accent" id="detailWhatsappButton" href="${escapeAttribute(whatsappUrl)}" target="_blank" rel="noopener noreferrer" ${phone.length < 8 ? "aria-disabled=\"true\"" : ""}>Consultar por WhatsApp</a>
-          <button class="button button-ghost" id="shareProductButton" type="button">Compartir</button>
+          ${phone.length >= 8 ? `
+            <a class="button button-accent" href="${whatsappUrl}" target="_blank" rel="noopener noreferrer">Consultar por WhatsApp</a>
+          ` : `
+            <p><strong>Red social:</strong> @${escapeHtml(normalizeInstagram(state.profile.instagram))}</p>
+          `}
+          <button class="icon-button" id="shareProductButton" type="button" aria-label="Compartir producto">↗</button>
         </div>
-        <p class="detail-safety">Coordina directamente con el vendedor. Revisa el producto antes de pagar y evita enviar anticipos.</p>
-        <a class="text-button report-link" href="${escapeAttribute(reportUrl)}">Reportar esta publicación</a>
       </div>
     </div>
   `;
 
-  const thumbnails = el("detailThumbnails");
-  images.forEach((image, index) => {
-    const button = document.createElement("button");
-    button.className = `product-thumbnail${index === 0 ? " is-active" : ""}`;
-    button.type = "button";
-    button.innerHTML = `<img src="${escapeAttribute(mediaUrl(image))}" alt="Vista ${index + 1} de ${escapeAttribute(product.name)}">`;
-    button.addEventListener("click", () => {
-      el("detailMainImage").src = mediaUrl(image);
-      thumbnails.querySelectorAll("button").forEach((item) => item.classList.remove("is-active"));
-      button.classList.add("is-active");
+  const thumbnails = container.querySelectorAll(".product-thumbnail");
+  thumbnails.forEach((thumb, index) => {
+    thumb.addEventListener("click", () => {
+      thumbnails.forEach((t) => t.classList.remove("is-active"));
+      thumb.classList.add("is-active");
+      el("detailMainImage").src = mediaUrl(product.images[index]);
     });
-    thumbnails.appendChild(button);
   });
 
-  const detailWhatsappButton = el("detailWhatsappButton");
-  detailWhatsappButton.addEventListener("click", (event) => {
-    if (storageMode === "demo") {
-      event.preventDefault();
-      showToast("Esta es una vitrina de ejemplo.");
-      return;
-    }
-    if (phone.length < 8) {
-      event.preventDefault();
-      showToast("Este vendedor todavía no configuró WhatsApp.");
-    }
-  });
+  const shareBtn = container.querySelector("#shareProductButton");
+  if (shareBtn) {
+    shareBtn.addEventListener("click", () => copyToClipboard(conceptualProductUrl(product.id), "Enlace al producto copiado."));
+  }
 
-  el("shareProductButton").addEventListener("click", () => shareItem(product.name, conceptualProductUrl(product.id)));
   productDialog.showModal();
-  history.replaceState(null, "", `#producto=${encodeURIComponent(product.id)}`);
 }
 
-function closeProductDetail() {
-  productDialog.close();
-  if (location.hash.startsWith("#producto=")) history.replaceState(null, "", "#vitrina");
+function openProductForm(productId = null) {
+  const isEdit = Boolean(productId);
+  const product = isEdit ? state.products.find((p) => p.id === productId) : null;
+
+  el("productIdInput").value = productId || "";
+  el("productFormTitle").textContent = isEdit ? "Editar producto" : "Agregar producto";
+  el("productNameInput").value = product ? product.name : "";
+  el("productPriceInput").value = product ? product.price : "";
+  el("productCategoryInput").value = product ? product.category : "home";
+  el("productConditionInput").value = product ? product.condition : "used";
+  el("productStatusInput").value = product ? product.status : "available";
+  el("productLocationInput").value = product ? product.location : state.profile.city;
+  el("productDeliveryInput").value = product ? product.delivery : "";
+  el("productDescriptionInput").value = product ? product.description : "";
+  el("deleteProductButton").hidden = !isEdit;
+
+  editingImages = product ? [...product.images] : [];
+  renderImagePreviews();
+
+  productFormDialog.showModal();
 }
 
-async function shareItem(title, url) {
-  const payload = { title, text: title, url };
-  try {
-    if (navigator.share) {
-      await navigator.share(payload);
-      return;
-    }
-  } catch (error) {
-    if (error?.name === "AbortError") return;
-  }
-  await copyText(url);
-  showToast("Enlace copiado.");
-}
-
-async function copyText(text) {
-  if (navigator.clipboard?.writeText && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand("copy");
-  textarea.remove();
-}
-
-async function shareProfile() {
-  await shareItem(state.profile.storeName, conceptualProfileUrl());
-}
-
-async function copyProfileUrl() {
-  await copyText(conceptualProfileUrl());
-  showToast("Enlace de tu vitrina copiado.");
-}
-
-function updateBioCounter() {
-  el("bioCounter").textContent = el("bioInput").value.length;
+function renderImagePreviews() {
+  const list = el("imagePreviewList");
+  list.innerHTML = "";
+  editingImages.forEach((img, index) => {
+    const wrap = document.createElement("div");
+    wrap.className = "image-preview";
+    wrap.innerHTML = `
+      <img src="${escapeAttribute(mediaUrl(img))}" alt="">
+      <button type="button" aria-label="Eliminar foto">×</button>
+    `;
+    wrap.querySelector("button").addEventListener("click", () => {
+      editingImages.splice(index, 1);
+      renderImagePreviews();
+    });
+    list.appendChild(wrap);
+  });
 }
 
 function showToast(message) {
   const toast = el("toast");
   toast.textContent = message;
   toast.classList.add("is-visible");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 2800);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.remove("is-visible");
+  }, 3200);
 }
 
-async function compressImage(file, maxDimension, quality) {
-  let source;
+async function copyToClipboard(text, successMessage) {
   try {
-    if ("createImageBitmap" in window) source = await createImageBitmap(file);
-  } catch (error) {
-    console.warn("createImageBitmap no pudo procesar la imagen", error);
+    await navigator.clipboard.writeText(text);
+    showToast(successMessage || "Copiado al portapapeles.");
+  } catch (err) {
+    showToast("No se pudo copiar automáticamente.");
   }
-
-  if (!source) source = await loadImageElement(file);
-  const sourceWidth = source.width || source.naturalWidth;
-  const sourceHeight = source.height || source.naturalHeight;
-  if (!sourceWidth || !sourceHeight) throw new Error("Dimensiones inválidas");
-
-  const scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
-  const width = Math.max(1, Math.round(sourceWidth * scale));
-  const height = Math.max(1, Math.round(sourceHeight * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d", { alpha: false });
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, width, height);
-  context.drawImage(source, 0, 0, width, height);
-  if (source.close) source.close();
-
-  let blob = await canvasToBlob(canvas, "image/webp", quality);
-  if (!blob) blob = await canvasToBlob(canvas, "image/jpeg", quality);
-  if (!blob) throw new Error("El navegador no pudo comprimir la imagen");
-  return blob;
 }
 
-function canvasToBlob(canvas, type, quality) {
-  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
-}
-
-function loadImageElement(file) {
-  return new Promise((resolve, reject) => {
-    const image = new Image();
-    const url = URL.createObjectURL(file);
-    image.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Formato de imagen no compatible"));
-    };
-    image.src = url;
-  });
-}
-
-function bindEvents() {
-  el("authModeSignIn").addEventListener("click", () => setAuthMode("signin"));
-  el("authModeSignUp").addEventListener("click", () => setAuthMode("signup"));
-
-  el("authForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    el("authError").hidden = true;
-    const email = el("authEmail").value.trim();
-    const password = el("authPassword").value;
-    const button = el("authSubmitButton");
-    const originalLabel = button.textContent;
-    button.disabled = true;
-    button.textContent = authMode === "signup" ? "Creando cuenta…" : "Ingresando…";
-    try {
-      if (authMode === "signup") {
-        await signUpWithEmail(email, password);
-        el("authMessage").textContent = "Cuenta creada. Revisa tu correo si se pide confirmación, o inicia sesión.";
-      } else {
-        await signInWithEmail(email, password);
-        window.location.href = window.location.origin + window.location.pathname;
-        return;
-      }
-    } catch (error) {
-      showAuthError(error);
-    } finally {
-      button.disabled = false;
-      button.textContent = originalLabel;
-    }
-  });
-
-  el("authForgotPasswordButton").addEventListener("click", async () => {
-    el("authError").hidden = true;
-    const email = el("authEmail").value.trim();
-    if (!email) {
-      showAuthError(new Error("Escribe tu correo arriba y luego toca este enlace."));
-      return;
-    }
-    const button = el("authForgotPasswordButton");
-    const originalLabel = button.textContent;
-    button.disabled = true;
-    button.textContent = "Enviando…";
-    try {
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname
-      });
-      if (error) throw error;
-      el("authMessage").textContent = "Si existe una cuenta con ese correo, te enviamos un enlace para restablecer tu contraseña.";
-    } catch (error) {
-      showAuthError(error);
-    } finally {
-      button.disabled = false;
-      button.textContent = originalLabel;
-    }
-  });
-
-  el("authSetNewPasswordButton").addEventListener("click", async () => {
-    el("authError").hidden = true;
-    const newPassword = el("authNewPassword").value;
-    if (newPassword.length < 6) {
-      showAuthError(new Error("La contraseña debe tener al menos 6 caracteres."));
-      return;
-    }
-    const button = el("authSetNewPasswordButton");
-    const originalLabel = button.textContent;
-    button.disabled = true;
-    button.textContent = "Guardando…";
-    try {
-      const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      isPasswordRecovery = false;
-      window.location.href = window.location.origin + window.location.pathname;
-    } catch (error) {
-      showAuthError(error);
-      button.disabled = false;
-      button.textContent = originalLabel;
-    }
-  });
+// Inicialización general y manejadores de eventos al cargar el documento
+document.addEventListener("DOMContentLoaded", async () => {
+  currentAd = pickAd();
 
   setupPasswordToggle("authPasswordToggle", "authPassword");
   setupPasswordToggle("authNewPasswordToggle", "authNewPassword");
-  if (!isPasswordRecovery) {
-    setAuthMode("signin");
+
+  if (supabaseClient) {
+    supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") showRecoveryForm();
+    });
   }
 
-  el("authBackButton").addEventListener("click", () => {
-    if (authMode !== "recovery") hideAuthScreen();
-  });
-  el("signOutButton").addEventListener("click", signOut);
+  await initializeStorage();
+  renderAll();
 
-  el("toggleEditorButton").addEventListener("click", () => {
-    if (!currentSession) {
-      setAuthMode("signup");
-      showAuthScreen();
-      return;
-    }
-    showEditor("profile");
-  });
-  el("loginPromptButton").addEventListener("click", () => {
-    setAuthMode("signin");
-    showAuthScreen();
-  });
-  el("previewButton").addEventListener("click", showStorefront);
-  el("brandButton").addEventListener("click", showStorefront);
-  el("shareButton").addEventListener("click", shareProfile);
-  el("shareProfileIconButton").addEventListener("click", shareProfile);
-  el("copyProfileUrlButton").addEventListener("click", copyProfileUrl);
-  el("createMineButton").addEventListener("click", () => {
-    if (currentSession && publicViewHandle) {
-      window.location.href = window.location.origin + window.location.pathname;
-      return;
-    }
-    if (currentSession) {
-      showEditor("profile");
-      return;
-    }
-    setAuthMode("signup");
-    showAuthScreen();
-  });
-  el("profileForm").addEventListener("submit", saveProfile);
-  el("bioInput").addEventListener("input", updateBioCounter);
-  el("avatarInput").addEventListener("change", (event) => handleMediaUpload(event, "avatar", 700, 0.82));
-  el("coverInput").addEventListener("change", (event) => handleMediaUpload(event, "cover", 1800, 0.78));
-  el("removeAvatarButton").addEventListener("click", removeAvatar);
-  el("removeCoverButton").addEventListener("click", removeCover);
-  el("addProductButton").addEventListener("click", () => openProductForm());
-  el("closeProductFormButton").addEventListener("click", closeProductForm);
-  el("productImagesInput").addEventListener("change", handleProductImagesUpload);
-  productForm.addEventListener("submit", saveProduct);
-  el("deleteProductButton").addEventListener("click", deleteProduct);
-  el("closeProductDialogButton").addEventListener("click", closeProductDetail);
-
-  el("whatsappLink").addEventListener("click", (event) => {
-    if (storageMode === "demo") {
-      event.preventDefault();
-      showToast("Esta es una vitrina de ejemplo.");
-      return;
-    }
-    if (normalizePhone(state.profile.whatsapp).length < 8) {
-      event.preventDefault();
-      showToast("Este vendedor todavía no configuró WhatsApp.");
-    }
+  // Cambios de pestañas en el editor
+  document.querySelectorAll("[data-editor-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("[data-editor-tab]").forEach((b) => b.classList.remove("is-active"));
+      document.querySelectorAll("[data-editor-panel]").forEach((p) => p.hidden = true);
+      btn.classList.add("is-active");
+      const target = btn.dataset.editorTab;
+      const panel = document.querySelector(`[data-editor-panel="${target}"]`);
+      if (panel) panel.hidden = false;
+    });
   });
 
-  document.querySelectorAll("[data-filter]").forEach((button) => {
-    button.addEventListener("click", () => {
-      activeFilter = button.dataset.filter;
-      document.querySelectorAll("[data-filter]").forEach((item) => item.classList.toggle("is-active", item === button));
+  // Filtros de productos en la vitrina pública
+  document.querySelectorAll("[data-filter]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      document.querySelectorAll("[data-filter]").forEach((c) => c.classList.remove("is-active"));
+      chip.classList.add("is-active");
+      activeFilter = chip.dataset.filter;
       renderProducts();
     });
   });
 
-  document.querySelectorAll("[data-editor-tab]").forEach((button) => {
-    button.addEventListener("click", () => switchEditorTab(button.dataset.editorTab));
+  // Eventos para personalizar apariencia
+  el("themePicker").addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-theme-option]");
+    if (!btn) return;
+    state.profile.theme = btn.dataset.themeOption;
+    renderAppearance();
+    renderAppearanceControls();
+    await persistState();
   });
 
-  document.querySelectorAll("[data-theme-option]").forEach((button) => {
-    button.addEventListener("click", () => applyAppearanceChange("theme", button.dataset.themeOption));
+  el("gridStylePicker").addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-grid-option]");
+    if (!btn) return;
+    state.profile.gridStyle = btn.dataset.gridOption;
+    renderAppearance();
+    renderAppearanceControls();
+    await persistState();
   });
-  document.querySelectorAll("[data-grid-option]").forEach((button) => {
-    button.addEventListener("click", () => applyAppearanceChange("gridStyle", button.dataset.gridOption));
+
+  el("backgroundPicker").addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-background-option]");
+    if (!btn) return;
+    state.profile.background = btn.dataset.backgroundOption;
+    renderAppearance();
+    renderAppearanceControls();
+    await persistState();
   });
-  document.querySelectorAll("[data-background-option]").forEach((button) => {
-    button.addEventListener("click", () => applyAppearanceChange("background", button.dataset.backgroundOption));
-  });
-  el("accentColorInput").addEventListener("input", (event) => {
-    state.profile.accent = event.target.value;
+
+  el("accentColorInput").addEventListener("input", (e) => {
+    state.profile.accent = e.target.value;
     renderAppearance();
   });
-  el("accentColorInput").addEventListener("change", (event) => applyAppearanceChange("accent", event.target.value));
-  el("fontInput").addEventListener("change", (event) => applyAppearanceChange("font", event.target.value));
-  el("stickerPackInput").addEventListener("change", (event) => applyAppearanceChange("stickerPack", event.target.value));
-  el("productsTitleInput").addEventListener("change", (event) => applyAppearanceChange("productsTitle", event.target.value.trim() || "Cosas que estoy vendiendo"));
 
-  [productDialog, productFormDialog].forEach((dialog) => {
-    dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) dialog.close();
-    });
+  el("accentColorInput").addEventListener("change", async () => {
+    await persistState();
   });
 
-  productDialog.addEventListener("close", () => {
-    if (location.hash.startsWith("#producto=")) history.replaceState(null, "", "#vitrina");
+  el("fontInput").addEventListener("change", async (e) => {
+    state.profile.font = e.target.value;
+    renderAppearance();
+    await persistState();
   });
 
-  window.addEventListener("hashchange", () => {
-    if (location.hash.startsWith("#producto=")) {
-      const id = decodeURIComponent(location.hash.slice("#producto=".length));
-      if (!productDialog.open) openProductDetail(id);
+  el("stickerPackInput").addEventListener("change", async (e) => {
+    state.profile.stickerPack = e.target.value;
+    renderAppearance();
+    await persistState();
+  });
+
+  el("productsTitleInput").addEventListener("input", (e) => {
+    state.profile.productsTitle = e.target.value;
+    el("productsTitle").textContent = e.target.value || "Cosas que estoy vendiendo";
+  });
+
+  el("productsTitleInput").addEventListener("change", async () => {
+    await persistState();
+  });
+
+  // Formulario de edición de perfil
+  el("bioInput").addEventListener("input", updateBioCounter);
+
+  el("profileForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    state.profile.handle = el("handleInput").value.trim().toLowerCase();
+    state.profile.storeName = el("storeNameInput").value.trim();
+    state.profile.city = el("cityInput").value.trim();
+    state.profile.whatsapp = el("whatsappInput").value.trim();
+    state.profile.instagram = el("instagramInput").value.trim();
+    state.profile.badge = el("badgeInput").value;
+    state.profile.bio = el("bioInput").value.trim();
+    state.profile.welcomeTitle = el("welcomeTitleInput").value.trim();
+    state.profile.welcomeText = el("welcomeTextInput").value.trim();
+
+    renderProfile();
+    const saved = await persistState();
+    if (saved) showToast("Perfil actualizado correctamente.");
+  });
+
+  // Modal de productos
+  el("addProductButton").addEventListener("click", () => {
+    if (getActiveProductCount() >= getPlanLimit()) {
+      showToast(`Llegaste al límite de ${getPlanLimit()} productos activos.`);
+      return;
     }
+    openProductForm();
   });
-}
 
-async function init() {
-  await initializeStorage();
-  bindEvents();
+  el("closeProductDialogButton").addEventListener("click", () => productDialog.close());
+  el("closeProductFormButton").addEventListener("click", () => productFormDialog.close());
 
-  if (isPasswordRecovery) {
-    // La pantalla de recuperación ya está mostrándose; no hay nada más que preparar.
-    return;
-  }
+  el("productForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = el("productIdInput").value;
+    const name = el("productNameInput").value.trim();
+    const price = Number(el("productPriceInput").value);
+    const category = el("productCategoryInput").value;
+    const condition = el("productConditionInput").value;
+    const status = el("productStatusInput").value;
+    const location = el("productLocationInput").value.trim();
+    const delivery = el("productDeliveryInput").value.trim();
+    const description = el("productDescriptionInput").value.trim();
 
-  if (publicViewHandle) {
-    // Vitrina pública de otro usuario: solo lectura, sin editor ni botón de sesión.
-    el("toggleEditorButton").hidden = true;
-    el("shareButton").hidden = false;
-    el("signOutButton").hidden = true;
-    el("loginPromptButton").hidden = true;
-  } else if (currentSession) {
-    el("signOutButton").hidden = false;
-    el("loginPromptButton").hidden = true;
-    el("toggleEditorButton").hidden = false;
+    if (status !== "sold" && getActiveProductCount(id) >= getPlanLimit()) {
+      showToast(`No puedes tener más de ${getPlanLimit()} productos activos.`);
+      return;
+    }
+
+    if (id) {
+      const idx = state.products.findIndex((p) => p.id === id);
+      if (idx !== -1) {
+        state.products[idx] = {
+          ...state.products[idx],
+          name, price, category, condition, status, location, delivery, description,
+          images: editingImages.length ? editingImages : state.products[idx].images
+        };
+      }
+    } else {
+      state.products.unshift({
+        id: generateId(),
+        name, price, category, condition, status, location, delivery, description,
+        images: editingImages.length ? editingImages : [createSvgDataUrl("SIN FOTO", "#d7d3ca", "#aaa39a", "□")],
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    productFormDialog.close();
+    renderProducts();
+    renderEditorProducts();
+    renderStats();
+    await persistState();
+    showToast(id ? "Producto actualizado." : "Producto agregado.");
+  });
+
+  el("deleteProductButton").addEventListener("click", async () => {
+    const id = el("productIdInput").value;
+    if (!id) return;
+    state.products = state.products.filter((p) => p.id !== id);
+    productFormDialog.close();
+    renderProducts();
+    renderEditorProducts();
+    renderStats();
+    await persistState();
+    showToast("Producto eliminado.");
+  });
+
+  // Acciones de la barra superior
+  el("toggleEditorButton").addEventListener("click", () => {
+    const showingEditor = editorView.hidden;
+    editorView.hidden = !showingEditor;
+    storefrontView.hidden = showingEditor;
+    el("toggleEditorButton").textContent = showingEditor ? "Ver mi vitrina pública" : "Editar mi vitrina";
+  });
+
+  el("previewButton").addEventListener("click", () => {
+    editorView.hidden = true;
+    storefrontView.hidden = false;
     el("toggleEditorButton").textContent = "Editar mi vitrina";
-    el("shareButton").hidden = false;
-  } else {
-    // Modo ejemplo: visitante sin cuenta viendo una vitrina de muestra.
-    el("signOutButton").hidden = true;
-    el("shareButton").hidden = true;
-    el("loginPromptButton").hidden = false;
-    el("toggleEditorButton").hidden = false;
-    el("toggleEditorButton").textContent = "Crear mi vitrina gratis";
-  }
+  });
 
-  currentAd = pickAd();
-  renderAll();
+  el("shareButton").addEventListener("click", () => {
+    copyToClipboard(conceptualProfileUrl(), "Enlace de tu vitrina copiado.");
+  });
 
-  if (location.hash.startsWith("#producto=")) {
-    const id = decodeURIComponent(location.hash.slice("#producto=".length));
-    requestAnimationFrame(() => openProductDetail(id));
-  }
-}
+  el("copyProfileUrlButton").addEventListener("click", () => {
+    copyToClipboard(conceptualProfileUrl(), "Enlace de tu vitrina copiado.");
+  });
 
-try {
-  supabaseClient.auth.onAuthStateChange((event) => {
-    if (event === "PASSWORD_RECOVERY") {
-      showRecoveryForm();
+  el("signOutButton").addEventListener("click", signOut);
+
+  el("authModeSignIn").addEventListener("click", () => setAuthMode("signin"));
+  el("authModeSignUp").addEventListener("click", () => setAuthMode("signup"));
+
+  el("authForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = el("authEmail").value.trim();
+    const password = el("authPassword").value;
+    el("authError").hidden = true;
+
+    try {
+      if (authMode === "signup") {
+        await signUpWithEmail(email, password);
+        showToast("Cuenta creada. Revisa tu correo para verificar tu cuenta.");
+      } else {
+        await signInWithEmail(email, password);
+        window.location.reload();
+      }
+    } catch (error) {
+      showAuthError(error);
     }
   });
-} catch (error) {
-  console.warn("No se pudo registrar el listener de sesión", error);
-}
 
-document.addEventListener("DOMContentLoaded", init);
+  el("authForgotPasswordButton").addEventListener("click", async () => {
+    const email = el("authEmail").value.trim();
+    if (!email) {
+      showAuthError({ message: "Ingresa tu correo para enviarte el enlace de recuperación." });
+      return;
+    }
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}${window.location.pathname}`
+    });
+    if (error) showAuthError(error);
+    else showToast("Te enviamos un correo para restablecer tu contraseña.");
+  });
+
+  el("authSetNewPasswordButton").addEventListener("click", async () => {
+    const newPassword = el("authNewPassword").value;
+    if (newPassword.length < 6) {
+      showAuthError({ message: "La contraseña debe tener al menos 6 caracteres." });
+      return;
+    }
+    const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+    if (error) {
+      showAuthError(error);
+    } else {
+      showToast("Contraseña actualizada con éxito.");
+      window.location.href = window.location.pathname;
+    }
+  });
+});
