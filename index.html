@@ -72,7 +72,6 @@
     </form>
   </section>
 
-
   <header class="topbar">
     <button class="brand" id="brandButton" type="button" aria-label="Ir a la vitrina pública">
       <span class="brand-mark" aria-hidden="true">✦</span>
@@ -100,7 +99,7 @@
 
         <div class="profile-card">
           <div class="avatar-shell">
-            <img id="publicAvatar" class="avatar" alt="Foto de perfil de la persona vendedora">
+            <img id="publicAvatar" class="avatar" alt="Foto de perfil de la persona vendedora" loading="lazy">
             <span class="status-dot" title="Vitrina activa"></span>
           </div>
 
@@ -273,7 +272,7 @@
               <div class="field-full media-preview-row">
                 <div class="media-preview-card">
                   <span>Foto de perfil</span>
-                  <img id="avatarPreview" alt="Vista previa de la foto de perfil">
+                  <img id="avatarPreview" alt="Vista previa de la foto de perfil" loading="lazy">
                   <button class="text-button danger-text" id="removeAvatarButton" type="button">Restablecer</button>
                 </div>
                 <div class="media-preview-card media-preview-cover">
@@ -450,7 +449,7 @@
 
   <footer class="site-footer" id="siteFooter">
     <span id="platformBranding">Creado con My Room · versión beta</span>
-    <a class="text-button" href="terminos.html">Términos y condiciones</a>
+    <a class="text-button" href="terminos.html" target="_blank" rel="noopener noreferrer">Términos y condiciones</a>
     <a class="text-button" href="mailto:myroom.vitrina@gmail.com?subject=Reporte%20en%20My%20Room">Reportar un problema</a>
   </footer>
 
