@@ -14,11 +14,11 @@
 //   active → pon false para pausarlo sin borrarlo (opcional)
 window.MYROOM_ADS = [
   // {
-  //   title: "Título del anuncio",
-  //   text: "Una línea que explique la oferta.",
-  //   url: "https://ejemplo.cl",
+  //   title: "Joyas Antuvilu",
+  //   text: "Orfebrería y diseños exclusivos en plata.",
+  //   url: "https://www.joyasantuvilu.cl",
   //   image: "",
-  //   cta: "Ver más",
+  //   cta: "Visitar tienda",
   //   active: true
   // }
 ];
